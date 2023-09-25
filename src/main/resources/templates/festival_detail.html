@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html layout:decorate="~{layout}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/festival_detail.css">
+
+    <!-- 제이쿼리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+
+<body>
+<div layout:fragment="content" class="container my-3">
+    <div class="wrap-box">
+        <!-- 축제 세부 정보 및 이미지 시작-->
+
+        <!-- 1. 선택한 축제 제목(title) 띄우기 -->
+        <h1 th:text="${selectedFestival.title}"></h1>
+
+        <div class="img">
+            <!-- 2. 선택한 축제 이미지 띄우기 -->
+            <img th:src="${selectedFestival.picture}" alt="이미지 대체" style="width: 70%">
+        </div>
+        <div class="info-container">
+            <!-- 여기에 추가 정보나 텍스트를 넣을 수 있음 -->
+            <table border="1">
+                <th></th>
+                <th></th>
+                <tr>
+                    <!-- 3. 선택한 축제 정보(title, address, event_Period) 불러오기 -->
+                    <td>이름</td>
+                    <td th:text="${selectedFestival.title}"></td>
+                </tr>
+                <tr>
+                    <td>주소</td>
+                    <td th:text="${selectedFestival.address}"></td>
+                    <div id="selectedFestivalAdress" th:text="${selectedFestival.address}" style="display:none;"></div>
+                </tr>
+                <tr>
+                    <td>행사일자</td>
+                    <td th:text="${selectedFestival.event_Period}"
+                    </td>
+                </tr>
+                <th></th>
+                <th></th>
+            </table>
+
+            <div class="button-container">
+                <a th:href="${site_link}" target="_blank" class="square-button">축제 사이트로 이동</a>
+                <a href="#" class="shortcut-button">
+                    <i class="fas fa-link"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="map">
+        <div id="map" style="width:70%;height:550px;"></div>
+
+        <script type="text/javascript"
+                src="//dapi.kakao.com/v2/maps/sdk.js?appkey=f2e8b8dfe2eeda94b06ca3878c8af6cf&libraries=services"></script>
+        <script>
+            /*<![CDATA[*/
+<!--            var selectedFestivalAdress = $("#selectedFestivalAdress").text();-->
+            var selectedFestivalAdress =  "[[ ${selectedFestival.address} ]]"
+            // 마커를 클릭하면 장소명을 표출할 인포윈도우 입니다
+            var infowindow = new kakao.maps.InfoWindow({ zIndex: 1 });
+
+            var mapContainer = document.getElementById('map'), // 지도를 표시할 div
+                mapOption = {
+                    center: new kakao.maps.LatLng(37.566826, 126.9786567), // 지도의 중심좌표
+                    level: 3 // 지도의 확대 레벨
+                };
+
+            // 지도를 생성합니다
+            var map = new kakao.maps.Map(mapContainer, mapOption);
+
+            // 장소 검색 객체를 생성합니다
+            var ps = new kakao.maps.services.Places();
+
+            // 키워드로 장소를 검색합니다
+            ps.keywordSearch(selectedFestivalAdress, placesSearchCB);
+
+            // 키워드 검색 완료 시 호출되는 콜백함수 입니다
+            function placesSearchCB(data, status, pagination) {
+                if (status === kakao.maps.services.Status.OK) {
+                    // 검색된 장소가 있을 경우에만 첫 번째 결과를 사용
+                    if (data.length > 0) {
+                        var place = data[0];
+                        displayMarker(place);
+                    }
+                }
+            }
+
+            // 지도에 마커를 표시하는 함수입니다
+            function displayMarker(place) {
+                // 마커를 생성하고 지도에 표시합니다
+                var marker = new kakao.maps.Marker({
+                    map: map,
+                    position: new kakao.maps.LatLng(place.y, place.x)
+                });
+
+                // 마커에 클릭 이벤트를 등록합니다
+                kakao.maps.event.addListener(marker, 'click', function () {
+                    // 마커를 클릭하면 장소명이 인포윈도우에 표출됩니다
+                    infowindow.setContent('<div style="padding:5px;font-size:12px;">' + place.place_name + '</div>');
+                    infowindow.open(map, marker);
+                });
+
+                // 마커가 표시되는 위치로 지도를 이동합니다
+                map.setCenter(new kakao.maps.LatLng(place.y, place.x));
+            }
+            /*]]>*/
+        </script>
+    </div>
+    <!-- 지도 api 넣기 끝 -->
+
+    <!-- 댓글 구현 시작 -->
+    <div class="comment">
+        <h1>댓글 작성하기</h1>
+        <!-- Spring Security를 사용하여 로그인 상태를 확인하여 댓글 입력 폼을 제어합니다. -->
+        <div th:if="${#authorization.expression('isAuthenticated()')}">
+            <input type="text" placeholder="댓글 작성은 큰 힘이 됩니다." id="commentInput">
+            <button id="commentSubmit">댓글 작성</button>
+        </div>
+        <div th:unless="${#authorization.expression('isAuthenticated()')}">
+            <p>댓글을 작성하려면 로그인하세요.</p>
+        </div>
+
+        <ul class="commentList">
+            <!-- 댓글 목록은 여기에 추가될 것입니다. -->
+            <li class="commentListList" th:each="comment : ${commentList}">
+                <span class="commentAuthor" th:text="${comment.author.username}"></span>
+                <p th:text="${comment.text}"></p>
+            </li>
+        </ul>
+    </div>
+    <!-- 댓글 구현 끝 -->
+
+    <!-- JavaScript 코드를 추가하여 댓글 작성 기능을 구현할 수 있습니다. -->
+    <script>
+        $(document).ready(function () {
+            $("#commentSubmit").click(function () {
+                var commentText = $("#commentInput").val();
+                // 여기에서 서버에 댓글을 전송하고 목록에 추가하는 로직을 추가해야 합니다.
+                // AJAX나 기타 웹 요청 기술을 사용하여 서버와 통신할 수 있습니다.
+
+                // 예시로 댓글 내용을 리스트에 추가하는 부분입니다.
+                if (commentText) {
+                    var commentItem = $("<li class='commentListList'></li>");
+                    commentItem.append("<span class='commentAuthor'>User</span>");
+                    commentItem.append("<p>" + commentText + "</p>");
+                    $(".commentList").append(commentItem);
+
+                    // 댓글 작성 후 입력 필드 초기화
+                    $("#commentInput").val("");
+                }
+
+                // 실제로는 서버와 통신하여 댓글을 저장하고, 서버에서 반환된 데이터를 사용하여 목록을 업데이트해야 합니다.
+                // AJAX 예시:
+                $.ajax({
+                     type: "POST",
+                     url: "/add-comment", // 댓글을 추가하는 서버 엔드포인트 URL
+                    data: { commentText: commentText }, // 댓글 내용을 서버에 전달
+                   success: function (response) {
+                        // 서버에서 성공 응답을 받으면 댓글 목록을 업데이트하거나 화면에 추가할 수 있습니다.
+                    },
+                    error: function (error) {
+                        // 에러 핸들링 로직 추가
+                     }
+                 });
+            });
+        });
+    </script>
+
+</body>
+</html>
